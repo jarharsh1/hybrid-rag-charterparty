@@ -1,9 +1,10 @@
-"""Hybrid RAG pipeline for charter-party / contract Q&A.
+"""Hybrid RAG pipeline — domain-agnostic document Q&A.
 
-Ingest contract text, then answer questions by fusing dense + BM25 retrieval
-and generating a grounded answer with clause citations. A light query-expansion
-step adds a few domain synonyms so colloquial questions still hit the defined
-contract terms.
+Ingest any text corpus, then answer questions by fusing dense + BM25 retrieval
+and generating a grounded answer with citations. An optional, configurable
+query-expansion step bridges everyday wording and the exact terms used in your
+documents; the default map is intentionally small and generic — extend
+`EXPANSIONS` for your domain (see the README "Use cases").
 """
 
 from __future__ import annotations
@@ -13,21 +14,20 @@ from charterqa.core.backends import get_backends
 from charterqa.core.chunking import chunk_text
 from charterqa.core.retriever import HybridRetriever
 
-# Minimal domain synonym map to bridge everyday wording and contract terms.
-_EXPANSIONS = {
-    "late": ["demurrage", "delay"],
-    "delay": ["demurrage"],
-    "unloading": ["discharge", "discharging"],
-    "loading": ["load", "laytime"],
-    "waiting": ["laytime", "demurrage"],
-    "payment": ["freight", "hire"],
-    "owner": ["owners", "shipowner"],
-    "renter": ["charterer", "charterers"],
+# Small, generic synonym map bridging everyday wording and document terms.
+# Extend this (or load your own) for a specific domain.
+EXPANSIONS = {
+    "refund": ["refunds", "return", "reimbursement"],
+    "cancel": ["cancellation", "terminate"],
+    "delete": ["deletion", "erasure", "remove"],
+    "password": ["credentials", "login"],
+    "overdue": ["late", "unpaid", "arrears"],
+    "response": ["sla", "acknowledged", "first"],
 }
 
-_PROMPT = """You are a contracts assistant. Answer the question using ONLY the
-charter-party context below. If the answer is not in the context, say you don't
-know. Do not invent clause numbers.
+_PROMPT = """You are a documentation assistant. Answer the question using ONLY
+the context below. If the answer is not in the context, say you don't know. Do
+not invent facts.
 
 CONTEXT:
 {context}
@@ -40,7 +40,7 @@ QUESTION:
 def expand_query(question: str) -> str:
     extra: list[str] = []
     low = question.lower()
-    for key, syns in _EXPANSIONS.items():
+    for key, syns in EXPANSIONS.items():
         if key in low:
             extra.extend(syns)
     return question if not extra else f"{question} {' '.join(extra)}"
