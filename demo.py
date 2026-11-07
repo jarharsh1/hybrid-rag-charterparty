@@ -1,4 +1,4 @@
-"""End-to-end CLI demo: ingest the sample charter party and answer questions.
+"""End-to-end CLI demo: ingest the sample knowledge base and answer questions.
 
     python demo.py            # Ollama if up, else offline
     RAG_OFFLINE=1 python demo.py
@@ -9,16 +9,16 @@ from pathlib import Path
 from charterqa.core.pipeline import CharterQaPipeline
 
 QUESTIONS = [
-    "What is the demurrage rate if unloading is late?",
-    "How much laytime is allowed for loading and discharging?",
-    "When is freight payable and at what rate?",
+    "How long do I have to request a refund?",
+    "What is the SLA for priority incidents?",
+    "How long is personal data retained?",
 ]
 
 
 def main() -> None:
-    doc = Path("data/voyage_charter.md").read_text(encoding="utf-8")
+    doc = Path("data/sample_knowledge_base.md").read_text(encoding="utf-8")
     pipe = CharterQaPipeline()
-    n = pipe.ingest(doc, source="voyage_charter.md")
+    n = pipe.ingest(doc, source="sample_knowledge_base.md")
     print(f"Ingested {n} chunks (backend: {type(pipe.llm).__name__})\n")
 
     for q in QUESTIONS:
