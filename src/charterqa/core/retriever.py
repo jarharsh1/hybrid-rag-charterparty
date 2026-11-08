@@ -47,6 +47,12 @@ class HybridRetriever:
             self._embeddings.append(emb)
         self._bm25.add(texts)
 
+    def clear(self) -> None:
+        """Drop all indexed chunks (dense + BM25) so the retriever can be reused."""
+        self.chunks.clear()
+        self._embeddings.clear()
+        self._bm25 = BM25Index(self._bm25.k1, self._bm25.b)
+
     def _dense(self, query: str, k: int) -> list[int]:
         q = self.embedder.embed([query])[0]
         scored = [(i, _cosine(q, e)) for i, e in enumerate(self._embeddings)]

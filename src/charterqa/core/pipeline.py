@@ -58,6 +58,11 @@ class CharterQaPipeline:
         self.retriever.add(chunks, source)
         return len(chunks)
 
+    def reset(self) -> None:
+        """Drop all ingested chunks. The shared in-process index is otherwise
+        append-only, so this lets callers reclaim it between corpora/sessions."""
+        self.retriever.clear()
+
     def ask(self, question: str, top_k: int | None = None) -> dict:
         if len(self.retriever) == 0:
             return {"answer": "No contracts have been ingested yet.", "sources": []}

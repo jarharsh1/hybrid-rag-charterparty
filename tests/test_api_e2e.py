@@ -32,3 +32,12 @@ def test_ingest_then_ask_refund():
 def test_index_and_static_served():
     assert "Hybrid RAG Engine" in client.get("/").text
     assert "/ask" in client.get("/static/app.js").text
+
+
+def test_reset_clears_the_shared_index():
+    client.post("/ingest", json={"text": "Demurrage accrues at five thousand dollars per day.", "source": "x"})
+    assert client.get("/health").json()["indexed_chunks"] > 0
+    r = client.post("/reset")
+    assert r.status_code == 200
+    assert r.json()["indexed_chunks"] == 0
+    assert client.get("/health").json()["indexed_chunks"] == 0
