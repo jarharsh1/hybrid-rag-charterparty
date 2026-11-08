@@ -21,10 +21,22 @@ def test_bm25_ranks_exact_term_first():
     assert hits[0][0] == 0  # the refund chunk
 
 
-def test_bm25_idf_non_negative():
+def test_bm25_idf_rare_term_outweighs_common_term():
+    # idf must discriminate: a term in one document should score strictly higher
+    # than a term in every document, and both must stay non-negative (+1 smoothing).
     idx = BM25Index()
-    idx.add(CHUNKS)
-    assert idx._idf("the") >= 0
+    idx.add(
+        [
+            "common laytime demurrage",
+            "common laytime cancellation",
+            "common laytime arbitration",
+        ]
+    )
+    rare_idf = idx._idf("demurrage")  # appears in exactly 1 of 3 docs
+    common_idf = idx._idf("common")  # appears in all 3 docs
+    assert rare_idf > common_idf
+    assert common_idf >= 0
+    assert idx._idf("missing") > rare_idf  # unseen term is rarest of all
 
 
 def test_hybrid_fuses_both_signals():
@@ -48,3 +60,18 @@ def test_empty_retriever_returns_nothing():
     emb = HashingEmbedder()
     r = HybridRetriever(emb)
     assert r.search("anything", top_k=3, candidate_k=5) == []
+
+
+def test_clear_resets_dense_and_bm25_state():
+    emb = HashingEmbedder()
+    r = HybridRetriever(emb)
+    r.add(CHUNKS, source="kb.md")
+    assert len(r) == len(CHUNKS)
+    r.clear()
+    assert len(r) == 0
+    # The fused search returns nothing on an empty index.
+    assert r.search("refund within days purchase", top_k=2, candidate_k=4) == []
+    # BM25 must also be reset: a term from the dropped corpus is gone, and its
+    # internal document list is empty (a stale index would corrupt later idf/tf).
+    assert r._bm25.doc_freq.get("refund", 0) == 0
+    assert r._bm25.docs == []
