@@ -20,8 +20,9 @@ from pydantic import BaseModel, Field
 from charterqa.core.backends import OllamaLLM
 from charterqa.core.pipeline import CharterQaPipeline
 
-_WEB_DIR = Path(__file__).resolve().parents[3] / "web"
-_SAMPLE = Path("data/sample_knowledge_base.md")
+_ROOT = Path(__file__).resolve().parents[3]
+_WEB_DIR = _ROOT / "web"
+_SAMPLE = _ROOT / "data" / "sample_knowledge_base.md"
 
 app = FastAPI(
     title="Hybrid RAG Engine (BM25 + dense)",
