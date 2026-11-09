@@ -8,6 +8,7 @@ signal surfaces; one that ranks on both wins.
 
 from __future__ import annotations
 
+import heapq
 import math
 from dataclasses import dataclass
 
@@ -56,8 +57,9 @@ class HybridRetriever:
     def _dense(self, query: str, k: int) -> list[int]:
         q = self.embedder.embed([query])[0]
         scored = [(i, _cosine(q, e)) for i, e in enumerate(self._embeddings)]
-        scored.sort(key=lambda t: t[1], reverse=True)
-        return [i for i, s in scored[:k] if s > 0]
+        # nlargest is O(n log k) vs a full O(n log n) sort; same top-k ordering.
+        top = heapq.nlargest(k, scored, key=lambda t: t[1])
+        return [i for i, s in top if s > 0]
 
     def _lexical(self, query: str, k: int) -> list[int]:
         return [i for i, _ in self._bm25.search(query, k)]

@@ -39,6 +39,10 @@ class BM25Index:
 
     def search(self, query: str, top_k: int) -> list[tuple[int, float]]:
         q_terms = tokenize(query)
+        # idf depends only on the index, not the document being scored, so compute
+        # it once per distinct query term instead of for every (term, doc) pair.
+        idf = {term: self._idf(term) for term in set(q_terms)}
+        avg_len = self.avg_len or 1
         scores: list[tuple[int, float]] = []
         for i, toks in enumerate(self.docs):
             tf = Counter(toks)
@@ -47,10 +51,9 @@ class BM25Index:
             for term in q_terms:
                 if term not in tf:
                     continue
-                idf = self._idf(term)
                 num = tf[term] * (self.k1 + 1)
-                den = tf[term] + self.k1 * (1 - self.b + self.b * dl / (self.avg_len or 1))
-                score += idf * num / den
+                den = tf[term] + self.k1 * (1 - self.b + self.b * dl / avg_len)
+                score += idf[term] * num / den
             if score > 0:
                 scores.append((i, score))
         scores.sort(key=lambda t: t[1], reverse=True)
