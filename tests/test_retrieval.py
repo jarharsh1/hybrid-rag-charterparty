@@ -2,7 +2,7 @@
 
 from charterqa.core.backends import HashingEmbedder
 from charterqa.core.bm25 import BM25Index
-from charterqa.core.pipeline import expand_query
+from charterqa.core.pipeline import CharterQaPipeline, expand_query
 from charterqa.core.retriever import HybridRetriever
 
 CHUNKS = [
@@ -56,10 +56,26 @@ def test_query_expansion_adds_domain_terms():
     assert "return" in expanded or "refunds" in expanded
 
 
+def test_query_expansion_matches_whole_words_not_substrings():
+    # "response" must not fire inside "irresponsible" (substring over-expansion).
+    assert expand_query("that was irresponsible conduct") == "that was irresponsible conduct"
+    # But the standalone word still expands.
+    assert "sla" in expand_query("what is the response time")
+
+
 def test_empty_retriever_returns_nothing():
     emb = HashingEmbedder()
     r = HybridRetriever(emb)
     assert r.search("anything", top_k=3, candidate_k=5) == []
+
+
+def test_pipeline_top_k_zero_is_honoured_not_defaulted():
+    # top_k=0 is falsy; `top_k or settings.top_k` wrongly fell back to the default.
+    p = CharterQaPipeline()
+    p.reset()
+    p.ingest(" ".join(CHUNKS), source="kb.md")
+    result = p.ask("how long to request a refund", top_k=0)
+    assert result["sources"] == []
 
 
 def test_clear_resets_dense_and_bm25_state():

@@ -10,7 +10,7 @@ documents; the default map is intentionally small and generic — extend
 from __future__ import annotations
 
 from charterqa.config import settings
-from charterqa.core.backends import get_backends
+from charterqa.core.backends import get_backends, tokenize
 from charterqa.core.chunking import chunk_text
 from charterqa.core.retriever import HybridRetriever
 
@@ -38,10 +38,12 @@ QUESTION:
 
 
 def expand_query(question: str) -> str:
+    # Match whole tokens, not raw substrings: a substring test would fire "response"
+    # on "irresponsible" (and such false hits multiply as EXPANSIONS grows).
+    words = set(tokenize(question))
     extra: list[str] = []
-    low = question.lower()
     for key, syns in EXPANSIONS.items():
-        if key in low:
+        if key in words:
             extra.extend(syns)
     return question if not extra else f"{question} {' '.join(extra)}"
 
@@ -67,7 +69,7 @@ class CharterQaPipeline:
         if len(self.retriever) == 0:
             return {"answer": "No contracts have been ingested yet.", "sources": []}
 
-        k = top_k or settings.top_k
+        k = settings.top_k if top_k is None else top_k
         q = expand_query(question)
         hits = self.retriever.search(q, top_k=k, candidate_k=settings.candidate_k)
 
